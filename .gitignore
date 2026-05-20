@@ -1,0 +1,7 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/ArrowDistributorApp/.vs/ArrowDistributorApp
+/ArrowDistributorApp/bin/Debug/net10.0
+/ArrowDistributorApp/obj
