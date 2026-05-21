@@ -5,3 +5,12 @@
 /ArrowDistributorApp/.vs/ArrowDistributorApp
 /ArrowDistributorApp/bin/Debug/net10.0
 /ArrowDistributorApp/obj
+/Task2_2/.vs
+/Task2_2/WeatherApp.Api/bin/Debug
+/Task2_2/WeatherApp.Api/obj
+/Task2_2/WeatherApp.Shared/bin/Debug
+/Task2_2/WeatherApp.Shared/obj
+/Task2_2/WeatherApp.Tests/bin/Debug
+/Task2_2/WeatherApp.Tests/obj
+/Task2_2/WeatherApp.Web/bin/Debug
+/Task2_2/WeatherApp.Web/obj

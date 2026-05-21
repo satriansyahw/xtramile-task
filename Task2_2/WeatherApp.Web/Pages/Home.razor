@@ -1,0 +1,234 @@
+@page "/"
+@inject HttpClient Http
+
+<PageTitle>Global Weather</PageTitle>
+
+<main class="app-container">
+    <header class="app-header">
+        <h1>Global Weather</h1>
+        <p>Select a location to get current conditions</p>
+    </header>
+
+    <section class="selectors-container glass-card">
+        <!-- Country Select -->
+        <div class="form-group">
+            <label for="countrySelect">Country</label>
+            <div class="select-wrapper">
+                <select id="countrySelect" @onchange="OnCountryChanged" value="@selectedCountryCode">
+                    <option value="" disabled selected>Select a country</option>
+                    @if (countries != null)
+                    {
+                        @foreach (var country in countries)
+                        {
+                            <option value="@country.Code">@country.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+
+        <!-- City Select -->
+        <div class="form-group">
+            <label for="citySelect">City</label>
+            <div class="select-wrapper">
+                <select id="citySelect" @onchange="OnCityChanged" value="@selectedCityName" disabled="@isCityDropdownDisabled">
+                    <option value="" disabled selected>@cityDropdownPlaceholder</option>
+                    @if (cities != null)
+                    {
+                        @foreach (var city in cities)
+                        {
+                            <option value="@city.Name">@city.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+    </section>
+
+    <!-- Loading Indicator -->
+    @if (isLoadingWeather)
+    {
+        <div class="loader-container glass-card">
+            <div class="spinner"></div>
+            <p>Loading weather data...</p>
+        </div>
+    }
+
+    <!-- Error Alert Box -->
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-alert">
+            <div class="error-title">Error</div>
+            <div>@errorMessage</div>
+            @if (validationErrors != null && validationErrors.Any())
+            {
+                <ul class="error-list">
+                    @foreach (var err in validationErrors)
+                    {
+                        <li>@err</li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+
+    <!-- Weather Information Card -->
+    @if (weatherData != null && !isLoadingWeather && string.IsNullOrEmpty(errorMessage))
+    {
+        <section class="glass-card">
+            <div class="weather-header">
+                <div class="weather-location">
+                    <h2>@weatherData.Location</h2>
+                    <div class="weather-time">@weatherData.TimeUTC</div>
+                </div>
+                <div class="weather-temp">
+                    <div class="temp-primary">@weatherData.TemperatureFahrenheit°F</div>
+                    <div class="temp-secondary">@weatherData.TemperatureCelsius°C</div>
+                </div>
+            </div>
+            <div class="weather-grid">
+                <div class="weather-item">
+                    <span class="weather-label">Sky</span>
+                    <span class="weather-value">@weatherData.SkyConditions</span>
+                </div>
+                <div class="weather-item">
+                    <span class="weather-label">Wind</span>
+                    <span class="weather-value">@weatherData.Wind</span>
+                </div>
+                <div class="weather-item">
+                    <span class="weather-label">Visibility</span>
+                    <span class="weather-value">@weatherData.Visibility</span>
+                </div>
+                <div class="weather-item">
+                    <span class="weather-label">Pressure</span>
+                    <span class="weather-value">@weatherData.Pressure hPa</span>
+                </div>
+                <div class="weather-item">
+                    <span class="weather-label">Humidity</span>
+                    <span class="weather-value">@weatherData.RelativeHumidity%</span>
+                </div>
+                <div class="weather-item">
+                    <span class="weather-label">Dew Point</span>
+                    <span class="weather-value">@weatherData.DewPoint°C</span>
+                </div>
+            </div>
+        </section>
+    }
+</main>
+
+@code {
+    private List<CountryDto>? countries;
+    private List<CityDto>? cities;
+    private WeatherResponseDto? weatherData;
+
+    private string selectedCountryCode = string.Empty;
+    private string selectedCityName = string.Empty;
+
+    private bool isLoadingWeather = false;
+    private bool isCityDropdownDisabled = true;
+    private string cityDropdownPlaceholder = "Select a country first";
+
+    private string? errorMessage;
+    private IEnumerable<string>? validationErrors;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<Result<List<CountryDto>>>("api/countries");
+            if (response != null && response.IsSuccess)
+            {
+                countries = response.Value;
+            }
+            else
+            {
+                errorMessage = response?.ErrorMessage ?? "Failed to load countries.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Connection error: {ex.Message}";
+        }
+    }
+
+    private async Task OnCountryChanged(ChangeEventArgs e)
+    {
+        selectedCountryCode = e.Value?.ToString() ?? string.Empty;
+        
+        // Reset states
+        selectedCityName = string.Empty;
+        cities = null;
+        weatherData = null;
+        errorMessage = null;
+        validationErrors = null;
+        isCityDropdownDisabled = true;
+
+        if (string.IsNullOrEmpty(selectedCountryCode))
+        {
+            cityDropdownPlaceholder = "Select a country first";
+            return;
+        }
+
+        cityDropdownPlaceholder = "Loading cities...";
+
+        try
+        {
+            var response = await Http.GetFromJsonAsync<Result<List<CityDto>>>($"api/countries/{selectedCountryCode}/cities");
+            if (response != null && response.IsSuccess)
+            {
+                cities = response.Value;
+                cityDropdownPlaceholder = "Select a city";
+                isCityDropdownDisabled = false;
+            }
+            else
+            {
+                errorMessage = response?.ErrorMessage ?? "Failed to load cities.";
+                cityDropdownPlaceholder = "Error loading cities";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Connection error: {ex.Message}";
+            cityDropdownPlaceholder = "Error loading cities";
+        }
+    }
+
+    private async Task OnCityChanged(ChangeEventArgs e)
+    {
+        selectedCityName = e.Value?.ToString() ?? string.Empty;
+        weatherData = null;
+        errorMessage = null;
+        validationErrors = null;
+
+        if (string.IsNullOrEmpty(selectedCityName)) return;
+
+        isLoadingWeather = true;
+
+        try
+        {
+            // API uses routing: GET /api/weather/{CityName}
+            var response = await Http.GetAsync($"api/weather/{Uri.EscapeDataString(selectedCityName)}");
+            
+            // Read response as Result<WeatherResponseDto> regardless of status code
+            var result = await response.Content.ReadFromJsonAsync<Result<WeatherResponseDto>>();
+
+            if (result != null && result.IsSuccess)
+            {
+                weatherData = result.Value;
+            }
+            else
+            {
+                errorMessage = result?.ErrorMessage ?? "Failed to fetch weather data.";
+                validationErrors = result?.Errors;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Connection error: {ex.Message}";
+        }
+        finally
+        {
+            isLoadingWeather = false;
+        }
+    }
+}
